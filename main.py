@@ -14,7 +14,7 @@ GROUP_ENTRY_TIME_WINDOW = 2.0    # Time window in seconds
 # -----------------------------
 
 # --- Loitering Constants ---
-LOITERING_TIME_THRESHOLD = 5.0 # Time in seconds (5 seconds)
+LOITERING_TIME_THRESHOLD = 8.0 # Time in seconds (8 seconds)
 LOITERING_DISTANCE_THRESHOLD = 20.0 # Max pixel distance change to be considered stationary
 # ---------------------------
 
@@ -28,7 +28,7 @@ STARTUP_FRAME_SKIP = 30 # Skip group detection for the first 30 frames
 
 
 # read in my video
-cap = cv2.VideoCapture("vid1.mp4") 
+cap = cv2.VideoCapture("group.mp4") 
 
 
 # load in my pre-trained YOLO model
@@ -217,7 +217,7 @@ while True:
     # Draw Counts 
     current_count = len(tracked_objects)
     total_count = len(seen_ids)
-    count_text = f"Current: {current_count}  Total Unique: {total_count}"
+    count_text = f"Current: {current_count} Total Unique: {total_count}"
     cv2.putText(frame, count_text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 0), 4, cv2.LINE_AA)
     cv2.putText(frame, count_text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2, cv2.LINE_AA)
 
