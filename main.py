@@ -23,11 +23,11 @@ skip_start_frames = 30
 loitering_time = 8.0
 loitering_distance = 20.0
 
-#Direction chnages
-# Person changing direction by over 90 degrees within 15 seconds
-history_length = 15
-angle_change = 90
-min_distance = 15.0
+#Direction changes
+# Person changing direction by over 70 degrees within 10 seconds
+history_length = 10
+angle_change = 70
+min_distance = 5
 flag_duration = 3.0
 
 # Show only people in the COCO dataset
@@ -35,7 +35,7 @@ person_id_class = 0
 
 
 # read in my video
-cap = cv2.VideoCapture("loitering.mp4")
+cap = cv2.VideoCapture("group.mp4")
 
 # load in my pre-trained YOLO model
 model = YOLO("yolov8n.pt")
@@ -282,35 +282,48 @@ while True:
         # if track id not in path history
         if track_id not in path_history:
             # create a deque for track ID 
-            path_history[track_id] = deque(history_length)
-            # Append the current centroid
-            path_history[track_id].append(current_centroid)
+            path_history[track_id] = deque(maxlen=history_length)
 
-        #-------------------------- needs
+        
+        # Append the current centroid
+        path_history[track_id].append(current_centroid)
 
-        # Check for direction change if we have enough history (at least 3 points)
+        
+
+
+        # Only check if we have enough history
         if len(path_history[track_id]) >= 3:
-            # Get the last three points: P1 (older), P2 (middle), P3 (newest)
-            p1, p2, p3 = list(path_history[track_id])[-3:]
-            p1, p2, p3 = map(lambda p: list(p), [p1, p2, p3]) # convert tuples to lists for numpy
 
-            # Create vectors V1 (P1->P2) and V2 (P2->P3)
-            v1 = (p2[0] - p1[0], p2[1] - p1[1])
-            v2 = (p3[0] - p2[0], p3[1] - p2[1])
+            # Get the last 3 positions
+            prev_point, mid_point, curr_point = list(path_history[track_id])[-3:]
 
-            # Check if movement is significant enough to calculate a stable angle
-            dist_v1 = math.hypot(*v1)
-            dist_v2 = math.hypot(*v2)
+            # How the person moved before
+            # The old x is the mid point minus the previous point
+            old_x = mid_point[0] - prev_point[0]
+            # The old y is the mid point minus the previous point
+            old_y = mid_point[1] - prev_point[1]
 
-            if dist_v1 > direction_change_min_distance and dist_v2 > direction_change_min_distance:
-                # Calculate the angle between the vectors
-                dot_product = v1[0] * v2[0] + v1[1] * v2[1]
-                angle_rad = math.acos(dot_product / (dist_v1 * dist_v2))
-                angle_deg = math.degrees(angle_rad)
+            # How the person is moving now
+            # The new x is the current point minus the mid point
+            new_x = curr_point[0] - mid_point[0]
+            #the new y is the current point minus the mid point
+            new_y = curr_point[1] - mid_point[1]
 
-                if angle_deg > DIRECTION_CHANGE_ANGLE_THRESHOLD:
+            # If the euclidean distance moved is more than the minimum distance
+            if math.hypot(old_x, old_y) > min_distance and math.hypot(new_x, new_y) > min_distance:
+
+                # Decide if the old  direction is horizontal or vertical using absolute values
+                old_direction = "horizontal" if abs(old_x) > abs(old_y) else "vertical"
+
+                # Decide if the new direction is horizontal or vertical using absolute values
+                new_direction = "horizontal" if abs(new_x) > abs(new_y) else "vertical"
+
+                # if the old direction is different from the new direction
+                if old_direction != new_direction:
+                    # Store the time the direction change was flagged
                     direction_flagged[track_id] = current_time
-        #---------------------------
+
+       
                     
     # End of direction change methodology
     
@@ -354,7 +367,7 @@ while True:
             text_label = f"ID: {track_id}"
 
         # Draw bounding box for the person
-        cv2.rectangle(frame, (x1, y1), (x2, y2), color, 3)
+        cv2.rectangle(frame, (x1, y1), (x2, y2), colour, 3)
 
         # Put text label above box 
         ((text_w, text_h), _) = cv2.getTextSize(text_label, cv2.FONT_HERSHEY_SIMPLEX, 0.8, 2)
@@ -364,14 +377,14 @@ while True:
         # Draw rectangle background for text
         cv2.rectangle(frame, text_bg_pt1, text_bg_pt2, (0, 0, 0), -1)
         # Draw the text label
-        cv2.putText(frame, text_label, (x1 + 3, y1 - 6), cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
+        cv2.putText(frame, text_label, (x1 + 3, y1 - 6), cv2.FONT_HERSHEY_SIMPLEX, 0.8, colour, 2)
 
         # Draw the path history and an arrow showing current direction
         if track_id in path_history and len(path_history[track_id]) > 1:
             # Draw the path trail
             path_points = [tuple(map(int, p)) for p in path_history[track_id]]
             for i in range(1, len(path_points)):
-                cv2.line(frame, path_points[i-1], path_points[i], color, 2)
+                cv2.line(frame, path_points[i-1], path_points[i], colour, 2)
 
             # Draw an arrow for the most recent movement
             if len(path_points) > 1:
@@ -380,7 +393,7 @@ while True:
                 cv2.arrowedLine(frame, start_point, end_point, (255, 255, 255), 2, tipLength=0.4)
 
     # Draw the counts
-    # Thr current count
+    # The current count
     current_count = len(tracked_objects)
     # The total unique count
     total_count = len(seen_ids)
